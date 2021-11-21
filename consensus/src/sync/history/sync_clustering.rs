@@ -1,6 +1,7 @@
 use std::collections::VecDeque;
 use std::sync::{Arc, Weak};
 
+use itertools::Itertools;
 use parking_lot::RwLock;
 
 use nimiq_blockchain::{AbstractBlockchain, Blockchain};
@@ -359,6 +360,8 @@ impl<TNetwork: Network> HistorySync<TNetwork> {
         // Add buffered clusters to sync_clusters.
         self.epoch_clusters.append(&mut new_clusters);
 
+        self.assert_correct_cluster_count();
+
         None
     }
 
@@ -466,6 +469,44 @@ impl<TNetwork: Network> HistorySync<TNetwork> {
                     }
                 }
             }
+        }
+        self.assert_correct_cluster_count();
+    }
+
+    fn assert_correct_cluster_count(&self) {
+        // Collect all consensus agents from all clusters
+        let agents = self
+            .epoch_clusters
+            .iter()
+            .chain(self.checkpoint_clusters.iter())
+            .chain(self.active_cluster.iter())
+            .map(|cluster| cluster.peers())
+            .flatten()
+            .map(Weak::upgrade)
+            .flatten()
+            .unique_by(|agent| agent.peer.id());
+
+        for agent in agents {
+            let mut cluster_count = 0;
+            for cluster in self
+                .epoch_clusters
+                .iter()
+                .chain(self.checkpoint_clusters.iter())
+                .chain(self.active_cluster.iter())
+            {
+                for peer2 in cluster.peers() {
+                    if let Some(agent2) = Weak::upgrade(peer2) {
+                        if agent2.peer.id() == agent.peer.id() {
+                            cluster_count += 1;
+                        }
+                    }
+                }
+            }
+
+            if !self.agents.contains_key(&agent.peer) {
+                panic!("Agent not present {:?}", agent.peer.id());
+            }
+            assert_eq!(self.agents.get(&agent.peer).unwrap().1, cluster_count);
         }
     }
 }
