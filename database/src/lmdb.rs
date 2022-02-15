@@ -373,37 +373,6 @@ impl<'txn, 'db> RawReadCursor for RawLmdbCursor<'txn, 'db> {
         Some(FromDatabaseValue::copy_from_database(result?).unwrap())
     }
 
-    fn seek_key_value<K, V>(&mut self, key: &K, value: &V) -> bool
-    where
-        K: AsDatabaseBytes + ?Sized,
-        V: AsDatabaseBytes + ?Sized,
-    {
-        let key = AsDatabaseBytes::as_database_bytes(key);
-        let value = AsDatabaseBytes::as_database_bytes(value);
-        let result = self.cursor.seek_kv(key.as_ref(), value.as_ref());
-        result.is_ok()
-    }
-
-    fn seek_key_nearest_value<K, V>(
-        &mut self,
-        access: &lmdb_zero::ConstAccessor,
-        key: &K,
-        value: &V,
-    ) -> Option<V>
-    where
-        K: AsDatabaseBytes + ?Sized,
-        V: AsDatabaseBytes + FromDatabaseValue,
-    {
-        let key = AsDatabaseBytes::as_database_bytes(key);
-        let value = AsDatabaseBytes::as_database_bytes(value);
-        let result: Option<&[u8]> = self
-            .cursor
-            .seek_k_nearest_v(access, key.as_ref(), value.as_ref())
-            .to_opt()
-            .unwrap();
-        Some(FromDatabaseValue::copy_from_database(result?).unwrap())
-    }
-
     fn get_current<K, V>(&mut self, access: &lmdb_zero::ConstAccessor) -> Option<(K, V)>
     where
         K: FromDatabaseValue,
