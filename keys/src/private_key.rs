@@ -26,7 +26,7 @@ impl PrivateKey {
     }
 
     #[inline]
-    pub(crate) fn as_zebra(&self) -> &ed25519_zebra::SigningKey {
+    pub fn as_zebra(&self) -> &ed25519_zebra::SigningKey {
         &self.0
     }
 
